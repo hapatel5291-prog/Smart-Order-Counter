@@ -35,6 +35,15 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:8px 5px;b
 .notice{background:#fff7d9;border:1px solid #e9d38a;padding:10px;border-radius:10px;font-size:13px}
 .empty{text-align:center;padding:20px;color:#777}
 @media(min-width:600px){.menu-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.stats{grid-template-columns:repeat(4,1fr)}nav button{font-size:14px}}
+
+/* One-second entry confirmation */
+#entryToast{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom,0px));transform:translate(-50%,14px);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:12px 16px;border-radius:14px;background:#163b2b;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.24);z-index:9999;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;font-size:14px;line-height:1.35}
+#entryToast.show{opacity:1;transform:translate(-50%,0)}
+#entryToast .toast-check{width:25px;height:25px;border-radius:50%;background:#fff;color:#16804a;display:grid;place-items:center;font-weight:800;flex-shrink:0}
+#entryToast .toast-title{font-weight:800}
+#entryToast .toast-detail{font-size:12px;opacity:.9;margin-top:2px}
+@media (prefers-reduced-motion:reduce){#entryToast{transition:none}}
+
 </style>
 </head>
 <body>
@@ -145,7 +154,19 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function setPayment(p){payment=p;document.getElementById('cashPay').classList.toggle('active',p==='Cash');document.getElementById('onlinePay').classList.toggle('active',p==='Online');document.getElementById('paymentLabel').textContent=p==='Online'?'Online / UPI':p}
 function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));if(id==='summary')renderSummary();if(id==='history')renderHistory();if(id==='reports'){fillReportItems();previewReport()}if(id==='settings')renderSettings();window.scrollTo(0,0)}
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.screen)));
-function addSale(item){const now=new Date();sales.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),itemId:item.id,name:item.name,category:item.category||'',price:Number(item.price),payment,date:dateLocal(now),time:timeLocal(now),timestamp:now.getTime()});persist();renderAll();if(navigator.vibrate)navigator.vibrate(25)}
+let entryToastTimer=null;
+function showEntryToast(item){
+ const toast=document.getElementById('entryToast');
+ if(!toast)return;
+ const title=document.getElementById('entryToastTitle');
+ const detail=document.getElementById('entryToastDetail');
+ title.textContent='✓ Entry added';
+ detail.textContent=`${item.name} · ₹${Number(item.price).toLocaleString('en-IN')} · ${payment}`;
+ toast.classList.add('show');
+ if(entryToastTimer)clearTimeout(entryToastTimer);
+ entryToastTimer=setTimeout(()=>toast.classList.remove('show'),1000);
+}
+function addSale(item){const now=new Date();sales.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),itemId:item.id,name:item.name,category:item.category||'',price:Number(item.price),payment,date:dateLocal(now),time:timeLocal(now),timestamp:now.getTime()});persist();renderAll();showEntryToast(item);if(navigator.vibrate)navigator.vibrate(25)}
 function renderMenu(){const el=document.getElementById('menuGrid');el.innerHTML='';config.items.filter(i=>i.enabled).forEach(item=>{const b=document.createElement('button');b.className='menu-item';b.innerHTML=`<span class="num">${esc(item.id)}</span><span class="name">${esc(item.name)}</span><span class="price">${money(item.price)}</span>`;b.onclick=()=>addSale(item);el.appendChild(b)});if(!el.children.length)el.innerHTML='<div class="empty">No enabled menu items. Open Settings.</div>'}
 function daySales(date=dateLocal()){return sales.filter(s=>s.date===date)}
 function sum(rows){return rows.reduce((a,s)=>a+Number(s.price||0),0)}
@@ -180,5 +201,6 @@ function clearSales(){if(confirm('Permanently delete all recorded sales from thi
 function init(){const d=dateLocal();rStartDate.value=d;rEndDate.value=d;renderAll();fillReportItems()}
 init();
 </script>
+<div id="entryToast" role="status" aria-live="polite"><span class="toast-check">✓</span><div><div class="toast-title" id="entryToastTitle">Entry added</div><div class="toast-detail" id="entryToastDetail"></div></div></div>
 </body>
 </html>
